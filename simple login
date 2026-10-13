@@ -1,0 +1,105 @@
+simple login page in php
+
+
+
+<?php
+session_start();
+
+// --- DATABASE CONFIGURATION ---
+$host = '127.0.0.1';
+$db   = 'my_website_db';
+$user = 'root';       
+$pass = 'itcell@cusat';         // Put your MySQL root password here if required
+$port = '3306';
+$error = "";
+
+try {
+    // Connect to MySQL using PDO
+    $dsn = "mysql:host=$host;dbname=$db;port=$port;charset=utf8mb4";
+    $pdo = new PDO($dsn, $user, $pass, [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
+} catch (\PDOException $e) {
+    die("Database connection failed: " . $e->getMessage());
+}
+
+// Check if form is submitted
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $username = trim($_POST["username"]);
+    $password = trim($_POST["password"]);
+
+    if (!empty($username) && !empty($password)) {
+        // Prepare statement to prevent SQL injection
+        $stmt = $pdo->prepare("SELECT id, username, password FROM users WHERE username = ?");
+        $stmt->execute([$username]);
+        $user_row = $stmt->fetch();
+
+        // Simple direct password comparison (simpler, but plain text)
+        if ($user_row && $password === $user_row["password"]) {
+            $_SESSION["loggedin"] = true;
+            $_SESSION["username"] = $user_row["username"];
+            
+            header("Location: login.php");
+            exit;
+        } else {
+            $error = "Invalid username or password!";
+        }
+    } else {
+        $error = "Please fill in all fields.";
+    }
+}
+
+// Handle Logout
+if (isset($_GET["action"]) && $_GET["action"] == "logout") {
+    session_destroy();
+    header("Location: login.php");
+    exit;
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Database Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; margin: 0; }
+        .box { background: white; padding: 25px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 300px; }
+        input { width: 100%; padding: 8px; margin: 8px 0 15px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #218838; }
+        .error { color: red; font-size: 14px; margin-bottom: 10px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <?php if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true): ?>
+        <h2>Welcome, <?php echo htmlspecialchars($_SESSION["username"]); ?>!</h2>
+        <p>You are successfully logged in from the database.</p>
+        <a href="login.php?action=logout"><button style="background: #dc3545;">Logout</button></a>
+
+    <?php else: ?>
+        <h2>Login</h2>
+        <?php if (!empty($error)): ?>
+            <div class="error"><?php echo $error; ?></div>
+        <?php endif; ?>
+        
+        <form method="POST" action="login.php">
+            <label>Username</label>
+            <input type="text" name="username" required>
+            
+            <label>Password</label>
+            <input type="password" name="password" required>
+            
+            <button type="submit">Log In</button>
+        </form>
+        <p style="font-size: 12px; color: #666; text-align: center; margin-top: 15px;">
+           <!-- Hint: Use <b>admin</b> / <b>password123</b> -->
+        </p>
+    <?php endif; ?>
+</div>
+
+</body>
+</html>
